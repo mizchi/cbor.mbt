@@ -1,0 +1,13 @@
+{
+  "is-main": true,
+  "supported-targets": ["native"],
+  "link": {
+    "native": {
+      "cc": "clang",
+      "cc-link-flags": "-L/Users/mizchi/sandbox/play_native/wasmtime/lib -lwasmtime -Wl,-rpath,/Users/mizchi/sandbox/play_native/wasmtime/lib"
+    }
+  },
+  "import": [
+    "mizchi/play_native/wasmtime_static"
+  ]
+}
