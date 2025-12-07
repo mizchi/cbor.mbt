@@ -276,3 +276,162 @@ test "edge_case: string length boundaries" {
   let e24 = encode_string(s24)
   assert_eq(decode_string(e24), s24)
 }
+
+// Nested structure tests using CborValue
+
+test "CborValue: simple values" {
+  // Int
+  let v1 : @cbor.CborValue = @cbor.vint(42L)
+  let encoded1 = @cbor.encode(v1)
+  let decoded1 = @cbor.decode(encoded1)
+  assert_eq(decoded1, v1)
+
+  // String
+  let v2 : @cbor.CborValue = @cbor.vstring("hello")
+  let encoded2 = @cbor.encode(v2)
+  let decoded2 = @cbor.decode(encoded2)
+  assert_eq(decoded2, v2)
+
+  // Bool
+  let v3 : @cbor.CborValue = @cbor.vbool(true)
+  let encoded3 = @cbor.encode(v3)
+  let decoded3 = @cbor.decode(encoded3)
+  assert_eq(decoded3, v3)
+
+  // Null
+  let v4 : @cbor.CborValue = @cbor.vnull()
+  let encoded4 = @cbor.encode(v4)
+  let decoded4 = @cbor.decode(encoded4)
+  assert_eq(decoded4, v4)
+}
+
+test "CborValue: array" {
+  // Simple array [1, 2, 3]
+  let arr1 : @cbor.CborValue = @cbor.varray([@cbor.vint(1L), @cbor.vint(2L), @cbor.vint(3L)])
+  let encoded1 = @cbor.encode(arr1)
+  let decoded1 = @cbor.decode(encoded1)
+  assert_eq(decoded1, arr1)
+
+  // Empty array
+  let arr2 : @cbor.CborValue = @cbor.varray([])
+  let encoded2 = @cbor.encode(arr2)
+  let decoded2 = @cbor.decode(encoded2)
+  assert_eq(decoded2, arr2)
+
+  // Mixed types array [1, "hello", true]
+  let arr3 : @cbor.CborValue = @cbor.varray([@cbor.vint(1L), @cbor.vstring("hello"), @cbor.vbool(true)])
+  let encoded3 = @cbor.encode(arr3)
+  let decoded3 = @cbor.decode(encoded3)
+  assert_eq(decoded3, arr3)
+}
+
+test "CborValue: nested array" {
+  // [[1, 2], [3, 4]]
+  let nested : @cbor.CborValue = @cbor.varray([
+    @cbor.varray([@cbor.vint(1L), @cbor.vint(2L)]),
+    @cbor.varray([@cbor.vint(3L), @cbor.vint(4L)]),
+  ])
+  let encoded = @cbor.encode(nested)
+  let decoded = @cbor.decode(encoded)
+  assert_eq(decoded, nested)
+
+  // Deeply nested [[[1]]]
+  let deep : @cbor.CborValue = @cbor.varray([@cbor.varray([@cbor.varray([@cbor.vint(1L)])])])
+  let encoded_deep = @cbor.encode(deep)
+  let decoded_deep = @cbor.decode(encoded_deep)
+  assert_eq(decoded_deep, deep)
+}
+
+test "CborValue: map" {
+  // Simple map {1: "one", 2: "two"}
+  let map1 : @cbor.CborValue = @cbor.vmap([
+    (@cbor.vint(1L), @cbor.vstring("one")),
+    (@cbor.vint(2L), @cbor.vstring("two")),
+  ])
+  let encoded1 = @cbor.encode(map1)
+  let decoded1 = @cbor.decode(encoded1)
+  assert_eq(decoded1, map1)
+
+  // Empty map
+  let map2 : @cbor.CborValue = @cbor.vmap([])
+  let encoded2 = @cbor.encode(map2)
+  let decoded2 = @cbor.decode(encoded2)
+  assert_eq(decoded2, map2)
+
+  // String keys {"name": "Alice", "age": 30}
+  let map3 : @cbor.CborValue = @cbor.vmap([
+    (@cbor.vstring("name"), @cbor.vstring("Alice")),
+    (@cbor.vstring("age"), @cbor.vint(30L)),
+  ])
+  let encoded3 = @cbor.encode(map3)
+  let decoded3 = @cbor.decode(encoded3)
+  assert_eq(decoded3, map3)
+}
+
+test "CborValue: nested map" {
+  // {"user": {"name": "Bob", "id": 123}}
+  let nested_map : @cbor.CborValue = @cbor.vmap([
+    (@cbor.vstring("user"), @cbor.vmap([
+      (@cbor.vstring("name"), @cbor.vstring("Bob")),
+      (@cbor.vstring("id"), @cbor.vint(123L)),
+    ])),
+  ])
+  let encoded = @cbor.encode(nested_map)
+  let decoded = @cbor.decode(encoded)
+  assert_eq(decoded, nested_map)
+}
+
+test "CborValue: tag" {
+  // Tag 0 (date/time string) with a string value
+  let tagged1 : @cbor.CborValue = @cbor.vtag(0UL, @cbor.vstring("2024-01-01T00:00:00Z"))
+  let encoded1 = @cbor.encode(tagged1)
+  let decoded1 = @cbor.decode(encoded1)
+  assert_eq(decoded1, tagged1)
+
+  // Tag 24 (CBOR data item) with an array
+  let tagged2 : @cbor.CborValue = @cbor.vtag(24UL, @cbor.varray([@cbor.vint(1L), @cbor.vint(2L)]))
+  let encoded2 = @cbor.encode(tagged2)
+  let decoded2 = @cbor.decode(encoded2)
+  assert_eq(decoded2, tagged2)
+}
+
+test "CborValue: complex nested structure" {
+  // Complex structure: array of maps
+  // [{"name": "Alice", "scores": [95, 87, 92]}, {"name": "Bob", "scores": [88, 91]}]
+  let complex : @cbor.CborValue = @cbor.varray([
+    @cbor.vmap([
+      (@cbor.vstring("name"), @cbor.vstring("Alice")),
+      (@cbor.vstring("scores"), @cbor.varray([@cbor.vint(95L), @cbor.vint(87L), @cbor.vint(92L)])),
+    ]),
+    @cbor.vmap([
+      (@cbor.vstring("name"), @cbor.vstring("Bob")),
+      (@cbor.vstring("scores"), @cbor.varray([@cbor.vint(88L), @cbor.vint(91L)])),
+    ]),
+  ])
+  let encoded = @cbor.encode(complex)
+  let decoded = @cbor.decode(encoded)
+  assert_eq(decoded, complex)
+}
+
+test "CborValue: all types" {
+  // Test each type individually first
+  let v1 : @cbor.CborValue = @cbor.vuint(123UL)
+  let e1 = @cbor.encode(v1)
+  let d1 = @cbor.decode(e1)
+  assert_eq(d1, @cbor.vint(123L)) // vuint(123) decodes as vint(123) due to range check
+
+  let v2 : @cbor.CborValue = @cbor.vint(-456L)
+  let e2 = @cbor.encode(v2)
+  let d2 = @cbor.decode(e2)
+  assert_eq(d2, v2)
+
+  let v3 : @cbor.CborValue = @cbor.vbytes(Bytes::from_array([b'\x01', b'\x02']))
+  let e3 = @cbor.encode(v3)
+  let d3 = @cbor.decode(e3)
+  assert_eq(d3, v3)
+
+  let v4 : @cbor.CborValue = @cbor.vstring("test")
+  let e4 = @cbor.encode(v4)
+  let d4 = @cbor.decode(e4)
+  assert_eq(d4, v4)
+}

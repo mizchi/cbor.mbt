@@ -13,6 +13,79 @@ pub suberror CborError String
 // 6: tag
 // 7: simple/float
 
+///|
+/// CBOR value representation supporting nested structures
+pub enum CborValue {
+  VUInt(UInt64)
+  VInt(Int64)
+  VBytes(Bytes)
+  VString(String)
+  VArray(Array[CborValue])
+  VMap(Array[(CborValue, CborValue)])
+  VTag(UInt64, CborValue)
+  VBool(Bool)
+  VNull
+  VUndefined
+  VDouble(Double)
+} derive(Show, Eq)
+
+// Helper functions to construct CborValue (for blackbox tests)
+
+///|
+pub fn vuint(v : UInt64) -> CborValue {
+  VUInt(v)
+}
+
+///|
+pub fn vint(v : Int64) -> CborValue {
+  VInt(v)
+}
+
+///|
+pub fn vbytes(v : Bytes) -> CborValue {
+  VBytes(v)
+}
+
+///|
+pub fn vstring(v : String) -> CborValue {
+  VString(v)
+}
+
+///|
+pub fn varray(v : Array[CborValue]) -> CborValue {
+  VArray(v)
+}
+
+///|
+pub fn vmap(v : Array[(CborValue, CborValue)]) -> CborValue {
+  VMap(v)
+}
+
+///|
+pub fn vtag(tag : UInt64, v : CborValue) -> CborValue {
+  VTag(tag, v)
+}
+
+///|
+pub fn vbool(v : Bool) -> CborValue {
+  VBool(v)
+}
+
+///|
+pub fn vnull() -> CborValue {
+  VNull
+}
+
+///|
+pub fn vundefined() -> CborValue {
+  VUndefined
+}
+
+///|
+pub fn vdouble(v : Double) -> CborValue {
+  VDouble(v)
+}
+
 // Pre-allocated constants for common values
 
 ///|
@@ -426,5 +499,174 @@ fn decode_head(
     (major, v, offset + 9)
   } else {
     raise CborError("Invalid additional info: \{additional}")
+  }
+}
+
+///|
+/// Encode CborValue to CBOR bytes (supports nested structures)
+pub fn encode(value : CborValue) -> Bytes {
+  match value {
+    VUInt(v) => encode_uint(v)
+    VInt(v) => encode_int(v)
+    VBytes(v) => encode_bytes(v)
+    VString(v) => encode_string(v)
+    VArray(arr) => {
+      // Encode array header
+      let header = encode_uint_internal(4, arr.length().to_uint64())
+      // Encode each element
+      let parts : Array[Bytes] = [header]
+      for item in arr {
+        parts.push(encode(item))
+      }
+      concat_bytes(parts)
+    }
+    VMap(pairs) => {
+      // Encode map header
+      let header = encode_uint_internal(5, pairs.length().to_uint64())
+      // Encode each key-value pair
+      let parts : Array[Bytes] = [header]
+      for pair in pairs {
+        let (k, v) = pair
+        parts.push(encode(k))
+        parts.push(encode(v))
+      }
+      concat_bytes(parts)
+    }
+    VTag(tag, val) => {
+      // Encode tag header
+      let header = encode_uint_internal(6, tag)
+      // Encode tagged value
+      let value_bytes = encode(val)
+      concat_bytes([header, value_bytes])
+    }
+    VBool(v) => encode_bool(v)
+    VNull => encode_null()
+    VUndefined => Bytes::from_array([b'\xf7'])
+    VDouble(v) => encode_double(v)
+  }
+}
+
+///|
+/// Helper: concatenate multiple Bytes
+fn concat_bytes(parts : Array[Bytes]) -> Bytes {
+  let mut total_len = 0
+  for part in parts {
+    total_len = total_len + part.length()
+  }
+  let result = FixedArray::make(total_len, b'\x00')
+  let mut pos = 0
+  for part in parts {
+    for i = 0; i < part.length(); i = i + 1 {
+      result[pos] = part[i]
+      pos = pos + 1
+    }
+  }
+  Bytes::makei(total_len, fn(i) { result[i] })
+}
+
+///|
+/// Decode CBOR bytes to CborValue (supports nested structures)
+pub fn decode(input : Bytes) -> CborValue raise CborError {
+  let (value, _consumed) = decode_value(input, 0)
+  value
+}
+
+///|
+/// Internal: decode CBOR value at given offset, returns (value, bytes_consumed)
+fn decode_value(input : Bytes, offset : Int) -> (CborValue, Int) raise CborError {
+  let (major, value, new_offset) = decode_head(input, offset)
+  match major {
+    // Major type 0: unsigned integer
+    0 => {
+      // If the value fits in Int64 range, return as VInt for convenience
+      if value <= 0x7FFFFFFFFFFFFFFFUL {
+        (VInt(value.reinterpret_as_int64()), new_offset)
+      } else {
+        (VUInt(value), new_offset)
+      }
+    }
+    // Major type 1: negative integer
+    1 => (VInt(-1L - value.reinterpret_as_int64()), new_offset)
+    // Major type 2: byte string
+    2 => {
+      let len = value.to_int()
+      if input.length() < new_offset + len {
+        raise CborError("Not enough bytes for byte string")
+      }
+      let bytes_data = FixedArray::make(len, b'\x00')
+      for i = 0; i < len; i = i + 1 {
+        bytes_data[i] = input[new_offset + i]
+      }
+      (VBytes(Bytes::makei(len, fn(i) { bytes_data[i] })), new_offset + len)
+    }
+    // Major type 3: text string
+    3 => {
+      let len = value.to_int()
+      if input.length() < new_offset + len {
+        raise CborError("Not enough bytes for text string")
+      }
+      let str = utf8_to_string_optimized(input, new_offset, len)
+      (VString(str), new_offset + len)
+    }
+    // Major type 4: array
+    4 => {
+      let len = value.to_int()
+      let arr : Array[CborValue] = []
+      let mut pos = new_offset
+      for _i = 0; _i < len; _i = _i + 1 {
+        let (item, consumed) = decode_value(input, pos)
+        arr.push(item)
+        pos = consumed
+      }
+      (VArray(arr), pos)
+    }
+    // Major type 5: map
+    5 => {
+      let len = value.to_int()
+      let map : Array[(CborValue, CborValue)] = []
+      let mut pos = new_offset
+      for _i = 0; _i < len; _i = _i + 1 {
+        let (key, consumed1) = decode_value(input, pos)
+        let (val, consumed2) = decode_value(input, consumed1)
+        map.push((key, val))
+        pos = consumed2
+      }
+      (VMap(map), pos)
+    }
+    // Major type 6: tag
+    6 => {
+      let (tagged_value, consumed) = decode_value(input, new_offset)
+      (VTag(value, tagged_value), consumed)
+    }
+    // Major type 7: simple values and floats
+    7 => {
+      let additional = input[offset].to_int() & 0x1f
+      if additional == 20 {
+        (VBool(false), new_offset)
+      } else if additional == 21 {
+        (VBool(true), new_offset)
+      } else if additional == 22 {
+        (VNull, new_offset)
+      } else if additional == 23 {
+        (VUndefined, new_offset)
+      } else if additional == 27 {
+        // 64-bit float
+        if input.length() < new_offset + 8 {
+          raise CborError("Not enough bytes for double")
+        }
+        let bits = (input[new_offset].to_uint64() << 56) |
+          (input[new_offset + 1].to_uint64() << 48) |
+          (input[new_offset + 2].to_uint64() << 40) |
+          (input[new_offset + 3].to_uint64() << 32) |
+          (input[new_offset + 4].to_uint64() << 24) |
+          (input[new_offset + 5].to_uint64() << 16) |
+          (input[new_offset + 6].to_uint64() << 8) |
+          input[new_offset + 7].to_uint64()
+        (VDouble(bits.reinterpret_as_double()), new_offset + 8)
+      } else {
+        raise CborError("Unsupported simple value: \{additional}")
+      }
+    }
+    _ => raise CborError("Invalid major type: \{major}")
   }
 }
