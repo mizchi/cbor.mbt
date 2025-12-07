@@ -5,54 +5,36 @@
 ## Features
 
 - **Pure MoonBit implementation** - Fast, portable, works on native and wasm-gc
-- **Rust FFI bindings** - High-performance alternative using ciborium
-- **RFC 8949 compliant** - Verified with oracle testing
-- **Test oracle** - Reference implementation for correctness
+- **RFC 8949 compliant** - Comprehensive test suite with 22+ test cases
+- **Zero dependencies** - Standalone implementation with no external dependencies
+- **Well-tested** - Includes RFC 8949 example tests and roundtrip verification
 
-## Implementations
+## Supported Types
 
-This repository contains multiple implementations:
+- Integers (signed/unsigned, Int64/UInt64)
+- Floating-point numbers (64-bit Double)
+- Strings (UTF-8 text strings)
+- Byte arrays (byte strings)
+- Booleans (true/false)
+- Null values
 
-### 1. Pure MoonBit (`pure/`)
+## Usage
 
-Pure MoonBit implementation, optimized for performance.
-
-**Supported types:**
-- Integers (signed/unsigned)
-- Floating-point numbers (64-bit)
-- Strings (UTF-8)
-- Byte arrays
-- Booleans
-- Null
-
-**Usage:**
 ```moonbit
-let encoded = @cbor_pure.encode_int(42L)
-let decoded = @cbor_pure.decode_int(encoded)
-```
+// Encoding
+let encoded_int = @cbor.encode_int(42L)
+let encoded_str = @cbor.encode_string("hello")
+let encoded_double = @cbor.encode_double(3.14)
+let encoded_bool = @cbor.encode_bool(true)
+let encoded_bytes = @cbor.encode_bytes(Bytes::from_array([b'\x01', b'\x02']))
+let encoded_null = @cbor.encode_null()
 
-### 2. Rust FFI Bindings (`bind/`)
-
-Bindings to the Rust `ciborium` library for comparison.
-
-**Prerequisites:**
-```bash
-cd lib
-cargo build --release
-```
-
-**Usage:**
-```moonbit
-let encoded = @cborbind.encode_int(42L)
-```
-
-### 3. Test Oracle (`test/`)
-
-Reference implementation used for testing the pure version.
-
-**Run tests:**
-```bash
-moon test --target native test
+// Decoding
+let decoded_int = @cbor.decode_int(encoded_int)!
+let decoded_str = @cbor.decode_string(encoded_str)!
+let decoded_double = @cbor.decode_double(encoded_double)!
+let decoded_bool = @cbor.decode_bool(encoded_bool)!
+let decoded_bytes = @cbor.decode_bytes(encoded_bytes)!
 ```
 
 ## Installation
@@ -61,52 +43,53 @@ Add to your `moon.mod.json`:
 ```json
 {
   "deps": {
-    "username/cbor": "0.1.0"
+    "mizchi/cbor": "0.1.0"
   }
 }
 ```
 
-## Performance
-
-The Pure MoonBit implementation is **faster than FFI** due to avoiding FFI overhead:
-
-| Operation | Pure MoonBit | Rust FFI | Speedup |
-|-----------|-------------|----------|---------|
-| encode_int | 8.2 ns | 12.5 ns | 1.5x |
-| encode_double | 6.1 ns | 15.2 ns | 2.5x |
-| encode_string | 25.3 ns | 42.1 ns | 1.7x |
-
 ## Testing
 
-Oracle-based testing ensures RFC 8949 compliance:
+The library includes comprehensive tests covering:
+
+- **RFC 8949 Examples** - Validates encoding against official specification examples
+- **Roundtrip Tests** - Ensures encode/decode operations are reversible
+- **Edge Cases** - Tests boundary values and special cases
 
 ```bash
 # Run all tests
-moon test --target native
+moon test
 
-# Run specific package tests
-moon test --target native pure
-moon test --target native test
+# Total: 22 tests covering all supported types
 ```
+
+### Test Coverage
+
+- Integer encoding (positive, negative, various sizes)
+- String encoding (ASCII, Unicode, emoji)
+- Byte array encoding (empty, various sizes)
+- Boolean and null values
+- Double precision floats (including infinity)
+- Boundary value testing (format transitions at 24, 256, 65536)
 
 ## Examples
 
-See `examples/` directory for usage examples.
+See `examples/` directory for usage examples:
 
-## Architecture
+```bash
+moon run examples
+```
+
+## Project Structure
 
 ```
-Pure MoonBit (pure/)
-    ├── Optimized implementation
-    └── Used in production
-
-Test Oracle (test/)
-    ├── C reference implementation
-    └── Validates Pure MoonBit
-
-Rust FFI (bind/ + lib/)
-    ├── ciborium wrapper
-    └── Performance comparison
+cbor.mbt              # Main CBOR implementation
+cbor_test.mbt         # Comprehensive test suite (22+ tests)
+cbor_bench.mbt        # Performance benchmarks
+examples/             # Usage examples
+  └── main.mbt       # Example usage
+cbor_rust/           # Rust reference implementation (for comparison)
+  └── src/lib.rs     # ciborium-based implementation
 ```
 
 ## License
