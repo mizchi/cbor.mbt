@@ -1,9 +1,10 @@
 {
-  "name": "username/cbor",
+  "name": "mizchi/cbor",
   "version": "0.1.0",
   "readme": "README.md",
-  "repository": "https://github.com/username/cbor.mbt",
+  "repository": "https://github.com/mizchi/cbor.mbt",
   "license": "MIT",
   "keywords": ["cbor", "serialization", "encoding"],
-  "description": "CBOR (RFC 8949) implementation for MoonBit - Pure and FFI versions"
+  "description": "CBOR (RFC 8949) implementation for MoonBit - Pure and FFI versions",
+  "preferred-target": "native"
 }

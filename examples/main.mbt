@@ -1,16 +1,31 @@
 ///|
 fn main {
-  println("=== CBOR (Rust/ciborium) Demo ===")
+  println("=== CBOR (Pure MoonBit) Demo ===")
   println("")
 
   // Int64 テスト
   println("--- Int64 ---")
   try {
     let original_int : Int64 = 12345678901234L
-    let encoded = encode_int(original_int)
+    let encoded = @cbor.encode_int(original_int)
     println("Original: \{original_int}")
     println("Encoded bytes: \{encoded.length()}")
-    let decoded = decode_int(encoded)
+    let decoded = @cbor.decode_int(encoded)
+    println("Decoded: \{decoded}")
+    println("Match: \{original_int == decoded}")
+  } catch {
+    CborError(msg) => println("Error: \{msg}")
+  }
+  println("")
+
+  // Negative int test
+  println("--- Negative Int64 ---")
+  try {
+    let original_int : Int64 = -9876543210L
+    let encoded = @cbor.encode_int(original_int)
+    println("Original: \{original_int}")
+    println("Encoded bytes: \{encoded.length()}")
+    let decoded = @cbor.decode_int(encoded)
     println("Decoded: \{decoded}")
     println("Match: \{original_int == decoded}")
   } catch {
@@ -22,10 +37,10 @@ fn main {
   println("--- Double ---")
   try {
     let original_double = 3.141592653589793
-    let encoded = encode_double(original_double)
+    let encoded = @cbor.encode_double(original_double)
     println("Original: \{original_double}")
     println("Encoded bytes: \{encoded.length()}")
-    let decoded = decode_double(encoded)
+    let decoded = @cbor.decode_double(encoded)
     println("Decoded: \{decoded}")
     println("Match: \{original_double == decoded}")
   } catch {
@@ -37,10 +52,10 @@ fn main {
   println("--- String ---")
   try {
     let original_string = "Hello, CBOR! こんにちは"
-    let encoded = encode_string(original_string)
+    let encoded = @cbor.encode_string(original_string)
     println("Original: \{original_string}")
     println("Encoded bytes: \{encoded.length()}")
-    let decoded = decode_string(encoded)
+    let decoded = @cbor.decode_string(encoded)
     println("Decoded: \{decoded}")
     println("Match: \{original_string == decoded}")
   } catch {
@@ -52,10 +67,10 @@ fn main {
   println("--- Bool ---")
   try {
     let original_bool = true
-    let encoded = encode_bool(original_bool)
+    let encoded = @cbor.encode_bool(original_bool)
     println("Original: \{original_bool}")
     println("Encoded bytes: \{encoded.length()}")
-    let decoded = decode_bool(encoded)
+    let decoded = @cbor.decode_bool(encoded)
     println("Decoded: \{decoded}")
     println("Match: \{original_bool == decoded}")
   } catch {
@@ -69,10 +84,10 @@ fn main {
     let original_bytes = Bytes::from_array([
       b'\x01', b'\x02', b'\x03', b'\x04', b'\x05',
     ])
-    let encoded = encode_bytes(original_bytes)
+    let encoded = @cbor.encode_bytes(original_bytes)
     println("Original length: \{original_bytes.length()}")
     println("Encoded bytes: \{encoded.length()}")
-    let decoded = decode_bytes(encoded)
+    let decoded = @cbor.decode_bytes(encoded)
     println("Decoded length: \{decoded.length()}")
     let mut match_ = original_bytes.length() == decoded.length()
     if match_ {
@@ -91,12 +106,8 @@ fn main {
 
   // Null テスト
   println("--- Null ---")
-  try {
-    let encoded = encode_null()
-    println("Null encoded bytes: \{encoded.length()}")
-  } catch {
-    CborError(msg) => println("Error: \{msg}")
-  }
+  let encoded = @cbor.encode_null()
+  println("Null encoded bytes: \{encoded.length()}")
   println("")
   println("=== Demo Complete ===")
 }

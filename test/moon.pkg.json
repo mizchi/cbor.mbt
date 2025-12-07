@@ -1,6 +1,0 @@
-{
-  "supported-targets": ["native"],
-  "is-main": true,
-  "native-stub": ["stub.c"],
-  "import": ["mizchi/play_native/cbor_pure"]
-}

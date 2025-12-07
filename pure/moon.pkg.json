@@ -1,4 +1,0 @@
-{
-  "supported-targets": ["native", "wasm-gc"],
-  "is-main": true
-}
